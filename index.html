@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dongle:wght@400;700&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,348,89.4;1,9..144,348,89.4&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #a8daff 0%, #6ec3f4 100%);
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        .container {
+            background: white;
+            min-height: 100vh;
+            padding: 40px;
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+        }
+
+        .calendar-container {
+            background: white;
+            position: sticky;
+            top: 40px;
+            flex-shrink: 0;
+            width: 300px;
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin-bottom: 25px;
+        }
+
+        .calendar-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .calendar-weekday {
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: "Dongle", sans-serif;
+            font-size: 22px;
+            color: #888;
+            font-weight: 700;
+            padding-top: 2px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: "Dongle", sans-serif;
+            font-weight: 400;
+            font-style: normal;
+            font-size: 22px;
+            color: #bbb;
+            border-radius: 50%;
+            transition: all 0.2s;
+            width: 38px;
+            height: 38px;
+            padding-top: 2px;
+        }
+
+        .calendar-day.current {
+            background: #6ec3f4;
+            color: white;
+            font-weight: 500;
+        }
+
+        .content-wrapper {
+            flex: 1;
+            max-width: 800px;
+            padding-top: 15px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 28px;
+            text-align: left;
+        }
+
+        h1 .date {
+            color: #6ec3f4;
+            font-family: "Fraunces", serif;
+            font-optical-sizing: auto;
+            font-weight: 400;
+            font-style: normal;
+            font-variation-settings: "SOFT" 89.4, "WONK" 0;
+            font-size: 36px;
+            display: block;
+        }
+
+        #todoList {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .todo-item {
+            background: #f8f9fa;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            cursor: move;
+        }
+
+        .todo-item:hover {
+            background: #e9ecef;
+        }
+
+        .todo-item.dragging {
+            opacity: 0.5;
+            transform: scale(1.02);
+        }
+
+        .todo-item.drag-over {
+            border-color: #6ec3f4;
+            transform: translateY(-2px);
+        }
+
+        .todo-item.completed {
+            opacity: 1;
+            background: #e3f4fc;
+        }
+
+        .todo-item.completed .todo-text {
+            text-decoration: line-through;
+            color: #999;
+        }
+
+        .drag-handle {
+            color: #ccc;
+            font-size: 20px;
+            cursor: grab;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            flex-shrink: 0;
+            appearance: none;
+            border: 2px solid #ccc;
+            border-radius: 50%;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .checkbox:checked {
+            background-color: #6ec3f4;
+            border-color: #6ec3f4;
+        }
+
+        .checkbox:checked::after {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 3px;
+            width: 11px;
+            height: 5px;
+            border-left: 2px solid white;
+            border-bottom: 2px solid white;
+            transform: rotate(-45deg);
+        }
+
+        .todo-text {
+            flex: 1;
+            color: #333;
+            font-size: 17px;
+            word-break: break-word;
+            padding: 4px 0;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .todo-text:focus {
+            background: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .delete-btn {
+            background: #ffaaaa;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            flex-shrink: 0;
+            opacity: 0;
+        }
+
+        .todo-item:hover .delete-btn {
+            opacity: 1;
+        }
+
+        .delete-btn:hover {
+            background: #ff8888;
+            transform: scale(1.05);
+        }
+
+        .new-task-input {
+            background: white;
+            padding: 12px 16px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            border: 2px solid #6ec3f4;
+            box-shadow: 0 4px 12px rgba(110, 195, 244, 0.2);
+        }
+
+        .new-task-input input {
+            flex: 1;
+            color: #333;
+            font-size: 17px;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .new-task-input input::placeholder {
+            color: #999;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .calendar-container {
+                position: static;
+                width: 100%;
+                padding-bottom: 20px;
+                border-bottom: 1px solid #f0f0f0;
+            }
+
+            .content-wrapper {
+                max-width: none;
+                width: 100%;
+                padding-top: 0;
+            }
+
+            h1 {
+                font-size: 26px;
+                margin-bottom: 10px;
+            }
+
+            .todo-item, .new-task-input {
+                padding: 15px;
+            }
+
+            .todo-text, .new-task-input input {
+                font-size: 16px;
+            }
+
+            .delete-btn {
+                opacity: 0;
+            }
+
+            .todo-item:active .delete-btn {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="calendar-container">
+            <div class="calendar-header" id="calendarHeader"></div>
+            <div id="calendar" class="calendar"></div>
+            <h1 id="title"></h1>
+        </div>
+        <div class="content-wrapper">
+            <ul id="todoList">
+                <li class="new-task-input">
+                    <input type="text" id="newTaskInput" placeholder="Add a new task..." />
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let todos = [];
+        let draggedIndex = null;
+
+        const newTaskInput = document.getElementById('newTaskInput');
+        const todoList = document.getElementById('todoList');
+        const calendarEl = document.getElementById('calendar');
+        const calendarHeaderEl = document.getElementById('calendarHeader');
+
+        function generateCalendar() {
+            const today = new Date();
+            const currentDay = today.getDate();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+
+            // Add weekday headers
+            const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+            calendarHeaderEl.innerHTML = '';
+            weekdays.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'calendar-weekday';
+                dayHeader.textContent = day;
+                calendarHeaderEl.appendChild(dayHeader);
+            });
+
+            // Get first day of month and total days
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            // Clear calendar
+            calendarEl.innerHTML = '';
+
+            // Add empty cells for days before month starts
+            for (let i = 0; i < firstDay; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-day';
+                calendarEl.appendChild(emptyDay);
+            }
+
+            // Add days of month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day';
+                if (day === currentDay) {
+                    dayEl.classList.add('current');
+                }
+                dayEl.textContent = day;
+                calendarEl.appendChild(dayEl);
+            }
+        }
+
+        function setTitle() {
+            const titleEl = document.getElementById('title');
+            const today = new Date();
+            const options = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
+            const dateStr = today.toLocaleDateString('en-US', options);
+            titleEl.innerHTML = `<span class="date">${dateStr}</span> To-Do List`;
+        }
+
+        function renderTodos() {
+            const newTaskBox = document.querySelector('.new-task-input');
+            
+            // Sort todos: uncompleted first, then completed
+            const sortedTodos = [...todos].sort((a, b) => {
+                if (a.completed === b.completed) return 0;
+                return a.completed ? 1 : -1;
+            });
+            
+            todoList.innerHTML = sortedTodos.map((todo) => {
+                const originalIndex = todos.indexOf(todo);
+                return `
+                <li class="todo-item ${todo.completed ? 'completed' : ''}" draggable="true" data-index="${originalIndex}">
+                    <span class="drag-handle">⋮⋮</span>
+                    <input type="checkbox" class="checkbox" ${todo.completed ? 'checked' : ''} onchange="toggleTodo(${originalIndex})">
+                    <input type="text" class="todo-text" value="${todo.text}" onblur="updateTodo(${originalIndex}, this.value)" />
+                    <button class="delete-btn" onclick="deleteTodo(${originalIndex})">Delete</button>
+                </li>
+            `}).join('');
+            
+            todoList.appendChild(newTaskBox);
+            addDragListeners();
+        }
+
+        function addDragListeners() {
+            const items = document.querySelectorAll('.todo-item');
+            
+            items.forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragend', handleDragEnd);
+                item.addEventListener('dragover', handleDragOver);
+                item.addEventListener('drop', handleDrop);
+                item.addEventListener('dragleave', handleDragLeave);
+            });
+        }
+
+        function handleDragStart(e) {
+            draggedIndex = parseInt(this.dataset.index);
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.todo-item').forEach(item => {
+                item.classList.remove('drag-over');
+            });
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const afterElement = getDragAfterElement(todoList, e.clientY);
+            const draggingElement = document.querySelector('.dragging');
+            
+            if (afterElement == null) {
+                const lastTask = Array.from(todoList.children).filter(child => 
+                    child.classList.contains('todo-item') && !child.classList.contains('dragging')
+                ).pop();
+                if (lastTask) {
+                    lastTask.classList.add('drag-over');
+                }
+            } else {
+                afterElement.classList.add('drag-over');
+            }
+            
+            return false;
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.todo-item:not(.dragging)')];
+            
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const afterElement = getDragAfterElement(todoList, e.clientY);
+            const draggedItem = todos[draggedIndex];
+            
+            todos.splice(draggedIndex, 1);
+            
+            if (afterElement == null) {
+                todos.push(draggedItem);
+            } else {
+                const dropIndex = parseInt(afterElement.dataset.index);
+                const adjustedIndex = dropIndex > draggedIndex ? dropIndex - 1 : dropIndex;
+                todos.splice(adjustedIndex, 0, draggedItem);
+            }
+            
+            renderTodos();
+            return false;
+        }
+
+        function addTodo() {
+            const text = newTaskInput.value.trim();
+            if (text) {
+                todos.push({ text, completed: false });
+                newTaskInput.value = '';
+                renderTodos();
+            }
+        }
+
+        function toggleTodo(index) {
+            todos[index].completed = !todos[index].completed;
+            renderTodos();
+        }
+
+        function updateTodo(index, newText) {
+            if (newText.trim()) {
+                todos[index].text = newText.trim();
+            }
+            renderTodos();
+        }
+
+        function deleteTodo(index) {
+            todos.splice(index, 1);
+            renderTodos();
+        }
+
+        newTaskInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTodo();
+        });
+
+        generateCalendar();
+        setTitle();
+        renderTodos();
+    </script>
+</body>
+</html>
