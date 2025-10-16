@@ -86,6 +86,7 @@
             background: #6ec3f4;
             color: white;
             font-weight: 500;
+            transform: scale(0.80);
         }
 
         .content-wrapper {
@@ -119,35 +120,51 @@
         }
 
         .todo-item {
-            background: #f8f9fa;
+            background: #e3f4fc;
             padding: 12px 16px;
             margin-bottom: 10px;
             border-radius: 12px;
             display: flex;
             align-items: center;
             gap: 15px;
-            transition: all 0.3s;
+            transition: transform 0.3s ease, margin 0.3s ease;
             border: 2px solid transparent;
             cursor: move;
+            touch-action: none;
+            position: relative;
         }
 
         .todo-item:hover {
-            background: #e9ecef;
+            background: #d4ecf8;
         }
 
         .todo-item.dragging {
-            opacity: 0.5;
-            transform: scale(1.02);
+            transform: scale(0.97);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12), 0 0 0 2px rgba(110, 195, 244, 0.4);
+            z-index: 1000;
+            background: #e9ecef !important;
+            border-color: #6ec3f4;
+            transition: none;
         }
 
-        .todo-item.drag-over {
-            border-color: #6ec3f4;
-            transform: translateY(-2px);
+        .todo-item.dragging * {
+            opacity: 1 !important;
+        }
+
+        .todo-item.dragging .todo-text,
+        .todo-item.dragging .drag-handle,
+        .todo-item.dragging .checkbox,
+        .todo-item.dragging .delete-btn {
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        .todo-item.placeholder {
+            background: #f8f9fa;
         }
 
         .todo-item.completed {
-            opacity: 1;
-            background: #e3f4fc;
+            background: #f8f9fa;
         }
 
         .todo-item.completed .todo-text {
@@ -161,6 +178,11 @@
             cursor: grab;
             user-select: none;
             flex-shrink: 0;
+            transition: color 0.2s;
+        }
+
+        .todo-item.dragging .drag-handle {
+            color: #6ec3f4;
         }
 
         .drag-handle:active {
@@ -168,15 +190,17 @@
         }
 
         .checkbox {
-            width: 24px;
+            width: 25px;
             height: 24px;
             cursor: pointer;
             flex-shrink: 0;
             appearance: none;
-            border: 2px solid #ccc;
+            border: 3px solid white;
             border-radius: 50%;
             transition: all 0.3s;
             position: relative;
+            background: transparent;
+            margin-top: 2px;
         }
 
         .checkbox:checked {
@@ -188,7 +212,7 @@
             content: '';
             position: absolute;
             top: 5px;
-            left: 3px;
+            left: 4px;
             width: 11px;
             height: 5px;
             border-left: 2px solid white;
@@ -198,14 +222,19 @@
 
         .todo-text {
             flex: 1;
-            color: #333;
+            color: #666;
             font-size: 17px;
             word-break: break-word;
             padding: 4px 0;
             border: none;
             background: transparent;
             outline: none;
-            font-family: inherit;
+            font-family: "Fraunces", serif;
+            font-optical-sizing: auto;
+            font-weight: 450;
+            font-style: normal;
+            font-variation-settings: "SOFT" 89.4, "WONK" 0;
+            margin-top: 2px;
         }
 
         .todo-text:focus {
@@ -254,25 +283,56 @@
             border: none;
             background: transparent;
             outline: none;
-            font-family: inherit;
+            font-family: "Fraunces", serif;
+            font-optical-sizing: auto;
+            font-weight: 450;
+            font-style: normal;
+            font-variation-settings: "SOFT" 89.4, "WONK" 0;
         }
 
         .new-task-input input::placeholder {
             color: #999;
+            font-family: "Fraunces", serif;
+            font-optical-sizing: auto;
+            font-weight: 450;
+            font-style: normal;
+            font-variation-settings: "SOFT" 89.4, "WONK" 0;
         }
 
         @media (max-width: 600px) {
             .container {
                 padding: 20px;
                 flex-direction: column;
-                gap: 20px;
+                gap: 15px;
             }
 
             .calendar-container {
                 position: static;
                 width: 100%;
-                padding-bottom: 20px;
+                padding-bottom: 15px;
                 border-bottom: 1px solid #f0f0f0;
+            }
+
+            .calendar {
+                gap: 2px;
+                margin-bottom: 15px;
+            }
+
+            .calendar-header {
+                gap: 2px;
+                margin-bottom: 6px;
+            }
+
+            .calendar-weekday {
+                width: 36px;
+                height: 36px;
+                font-size: 20px;
+            }
+
+            .calendar-day {
+                width: 36px;
+                height: 36px;
+                font-size: 20px;
             }
 
             .content-wrapper {
@@ -282,12 +342,16 @@
             }
 
             h1 {
-                font-size: 26px;
-                margin-bottom: 10px;
+                font-size: 24px;
+                margin-bottom: 8px;
+            }
+
+            h1 .date {
+                font-size: 32px;
             }
 
             .todo-item, .new-task-input {
-                padding: 15px;
+                padding: 12px 14px;
             }
 
             .todo-text, .new-task-input input {
@@ -296,6 +360,8 @@
 
             .delete-btn {
                 opacity: 0;
+                padding: 6px 12px;
+                font-size: 13px;
             }
 
             .todo-item:active .delete-btn {
@@ -323,6 +389,8 @@
     <script>
         let todos = [];
         let draggedIndex = null;
+        let draggedElement = null;
+        let placeholder = null;
 
         const newTaskInput = document.getElementById('newTaskInput');
         const todoList = document.getElementById('todoList');
@@ -335,7 +403,6 @@
             const currentMonth = today.getMonth();
             const currentYear = today.getFullYear();
 
-            // Add weekday headers
             const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
             calendarHeaderEl.innerHTML = '';
             weekdays.forEach(day => {
@@ -345,21 +412,17 @@
                 calendarHeaderEl.appendChild(dayHeader);
             });
 
-            // Get first day of month and total days
             const firstDay = new Date(currentYear, currentMonth, 1).getDay();
             const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-            // Clear calendar
             calendarEl.innerHTML = '';
 
-            // Add empty cells for days before month starts
             for (let i = 0; i < firstDay; i++) {
                 const emptyDay = document.createElement('div');
                 emptyDay.className = 'calendar-day';
                 calendarEl.appendChild(emptyDay);
             }
 
-            // Add days of month
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayEl = document.createElement('div');
                 dayEl.className = 'calendar-day';
@@ -382,7 +445,6 @@
         function renderTodos() {
             const newTaskBox = document.querySelector('.new-task-input');
             
-            // Sort todos: uncompleted first, then completed
             const sortedTodos = [...todos].sort((a, b) => {
                 if (a.completed === b.completed) return 0;
                 return a.completed ? 1 : -1;
@@ -407,87 +469,242 @@
             const items = document.querySelectorAll('.todo-item');
             
             items.forEach(item => {
+                // Mouse events
                 item.addEventListener('dragstart', handleDragStart);
                 item.addEventListener('dragend', handleDragEnd);
                 item.addEventListener('dragover', handleDragOver);
-                item.addEventListener('drop', handleDrop);
-                item.addEventListener('dragleave', handleDragLeave);
+                item.addEventListener('dragenter', handleDragEnter);
+                
+                // Touch events
+                const handle = item.querySelector('.drag-handle');
+                handle.addEventListener('touchstart', handleTouchStart, { passive: false });
+                handle.addEventListener('touchmove', handleTouchMove, { passive: false });
+                handle.addEventListener('touchend', handleTouchEnd, { passive: false });
             });
         }
 
         function handleDragStart(e) {
             draggedIndex = parseInt(this.dataset.index);
+            draggedElement = this;
             this.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
         }
 
         function handleDragEnd(e) {
             this.classList.remove('dragging');
+            draggedElement = null;
+            
+            // Remove all transforms
             document.querySelectorAll('.todo-item').forEach(item => {
-                item.classList.remove('drag-over');
+                item.style.transform = '';
             });
+        }
+
+        function handleDragEnter(e) {
+            e.preventDefault();
+            if (this === draggedElement) return;
+            
+            const items = [...todoList.querySelectorAll('.todo-item:not(.new-task-input)')];
+            const draggedPos = items.indexOf(draggedElement);
+            const targetPos = items.indexOf(this);
+            
+            // Reset all transforms first
+            items.forEach(item => {
+                if (item !== draggedElement) {
+                    item.style.transform = '';
+                }
+            });
+            
+            // If moving back to original position, no transforms needed
+            if (targetPos === draggedPos) {
+                return;
+            }
+            
+            if (draggedPos < targetPos) {
+                // Moving down - shift items up
+                for (let i = draggedPos + 1; i <= targetPos; i++) {
+                    items[i].style.transform = 'translateY(-' + (draggedElement.offsetHeight + 10) + 'px)';
+                }
+            } else {
+                // Moving up - shift items down
+                for (let i = targetPos; i < draggedPos; i++) {
+                    items[i].style.transform = 'translateY(' + (draggedElement.offsetHeight + 10) + 'px)';
+                }
+            }
         }
 
         function handleDragOver(e) {
             e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            
-            const afterElement = getDragAfterElement(todoList, e.clientY);
-            const draggingElement = document.querySelector('.dragging');
-            
-            if (afterElement == null) {
-                const lastTask = Array.from(todoList.children).filter(child => 
-                    child.classList.contains('todo-item') && !child.classList.contains('dragging')
-                ).pop();
-                if (lastTask) {
-                    lastTask.classList.add('drag-over');
-                }
-            } else {
-                afterElement.classList.add('drag-over');
-            }
-            
             return false;
         }
 
-        function getDragAfterElement(container, y) {
-            const draggableElements = [...container.querySelectorAll('.todo-item:not(.dragging)')];
+        let touchStartY = 0;
+        let touchCurrentY = 0;
+        let touchDraggedElement = null;
+        let initialOffset = 0;
+        let lastTargetPos = -1;
+
+        function handleTouchStart(e) {
+            const todoItem = e.target.closest('.todo-item');
+            if (!todoItem) return;
             
-            return draggableElements.reduce((closest, child) => {
-                const box = child.getBoundingClientRect();
-                const offset = y - box.top - box.height / 2;
-                
-                if (offset < 0 && offset > closest.offset) {
-                    return { offset: offset, element: child };
-                } else {
-                    return closest;
-                }
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
+            e.preventDefault();
+            touchDraggedElement = todoItem;
+            draggedElement = todoItem;
+            draggedIndex = parseInt(todoItem.dataset.index);
+            
+            const rect = todoItem.getBoundingClientRect();
+            touchStartY = e.touches[0].clientY;
+            touchCurrentY = touchStartY;
+            initialOffset = rect.top;
+            lastTargetPos = -1;
+            
+            todoItem.classList.add('dragging');
         }
 
-        function handleDragLeave(e) {
-            this.classList.remove('drag-over');
-        }
-
-        function handleDrop(e) {
-            e.stopPropagation();
+        function handleTouchMove(e) {
+            if (!touchDraggedElement) return;
             e.preventDefault();
             
-            const afterElement = getDragAfterElement(todoList, e.clientY);
-            const draggedItem = todos[draggedIndex];
+            touchCurrentY = e.touches[0].clientY;
+            const deltaY = touchCurrentY - touchStartY;
             
-            todos.splice(draggedIndex, 1);
+            // Move the dragged element
+            touchDraggedElement.style.transform = `translateY(${deltaY}px) scale(0.97)`;
             
-            if (afterElement == null) {
-                todos.push(draggedItem);
-            } else {
-                const dropIndex = parseInt(afterElement.dataset.index);
-                const adjustedIndex = dropIndex > draggedIndex ? dropIndex - 1 : dropIndex;
-                todos.splice(adjustedIndex, 0, draggedItem);
+            // Find which item we're hovering over
+            const items = [...todoList.querySelectorAll('.todo-item:not(.new-task-input)')];
+            const draggedPos = items.indexOf(touchDraggedElement);
+            
+            let targetPos = draggedPos; // Default to original position
+            for (let i = 0; i < items.length; i++) {
+                if (items[i] === touchDraggedElement) continue;
+                
+                const rect = items[i].getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                
+                if (touchCurrentY < midpoint) {
+                    targetPos = i;
+                    break;
+                }
             }
             
-            renderTodos();
-            return false;
+            // If not found above any item, check if it should be at the end
+            if (targetPos === draggedPos) {
+                const lastItem = items[items.length - 1];
+                if (lastItem !== touchDraggedElement) {
+                    const lastRect = lastItem.getBoundingClientRect();
+                    if (touchCurrentY > lastRect.top + lastRect.height / 2) {
+                        targetPos = items.length - 1;
+                    }
+                }
+            }
+            
+            // Only update transforms if target position changed
+            if (targetPos !== lastTargetPos) {
+                lastTargetPos = targetPos;
+                
+                // Reset all transforms except dragged element
+                items.forEach((item, idx) => {
+                    if (item === touchDraggedElement) return;
+                    item.style.transform = '';
+                });
+                
+                // If back at original position, no transforms needed
+                if (targetPos === draggedPos) {
+                    return;
+                }
+                
+                // Apply transforms to make space
+                if (draggedPos < targetPos) {
+                    // Moving down
+                    for (let i = draggedPos + 1; i <= targetPos; i++) {
+                        items[i].style.transform = 'translateY(-' + (touchDraggedElement.offsetHeight + 10) + 'px)';
+                    }
+                } else if (draggedPos > targetPos) {
+                    // Moving up
+                    for (let i = targetPos; i < draggedPos; i++) {
+                        items[i].style.transform = 'translateY(' + (touchDraggedElement.offsetHeight + 10) + 'px)';
+                    }
+                }
+            }
         }
+
+        function handleTouchEnd(e) {
+            if (!touchDraggedElement) return;
+            e.preventDefault();
+            
+            // Find final position
+            const items = [...todoList.querySelectorAll('.todo-item:not(.new-task-input)')];
+            const draggedPos = items.indexOf(touchDraggedElement);
+            
+            let targetPos = -1;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i] === touchDraggedElement) continue;
+                
+                const rect = items[i].getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                
+                if (touchCurrentY < midpoint && targetPos === -1) {
+                    targetPos = i;
+                    break;
+                }
+            }
+            
+            if (targetPos === -1) targetPos = items.length - 1;
+            
+            // Reorder array
+            const draggedItem = todos[draggedIndex];
+            todos.splice(draggedIndex, 1);
+            
+            const targetIndex = parseInt(items[targetPos].dataset.index);
+            const newPos = todos.indexOf(todos.find((_, idx) => idx === targetIndex || todos[idx] === draggedItem));
+            todos.splice(targetPos > draggedPos ? targetPos : targetPos, 0, draggedItem);
+            
+            // Clean up
+            touchDraggedElement.style.transform = '';
+            touchDraggedElement.classList.remove('dragging');
+            items.forEach(item => item.style.transform = '');
+            
+            touchDraggedElement = null;
+            draggedElement = null;
+            
+            renderTodos();
+        }
+
+        // Mouse drop handler
+        todoList.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (!draggedElement) return;
+            
+            const items = [...todoList.querySelectorAll('.todo-item:not(.new-task-input)')];
+            const targetElement = e.target.closest('.todo-item');
+            
+            if (!targetElement || targetElement === draggedElement) {
+                items.forEach(item => item.style.transform = '');
+                return;
+            }
+            
+            const draggedPos = items.indexOf(draggedElement);
+            const targetPos = items.indexOf(targetElement);
+            
+            // Reorder array
+            const draggedItem = todos[draggedIndex];
+            todos.splice(draggedIndex, 1);
+            
+            const targetIndex = parseInt(targetElement.dataset.index);
+            let insertPos = targetPos;
+            if (draggedPos < targetPos) {
+                insertPos = targetPos;
+            }
+            
+            todos.splice(insertPos, 0, draggedItem);
+            
+            // Clean up and re-render
+            items.forEach(item => item.style.transform = '');
+            renderTodos();
+        });
 
         function addTodo() {
             const text = newTaskInput.value.trim();
